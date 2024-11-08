@@ -1,0 +1,124 @@
+To use a Scala UDF (User-Defined Function) in PySpark, you'll need to follow these steps since PySpark does not natively support Scala UDFs. 
+PySpark executes on the JVM, so it’s possible to register a Scala UDF through Spark’s SparkSession and call it in PySpark, but you’ll need to use Spark’s Java interop features. 
+Here’s how to set it up:
+
+Steps for Writing Scala UDFs in PySpark
+
+Write the Scala UDF code. This code will define the logic of your UDF.
+
+Compile the Scala code into a JAR file. Use SBT or Maven to package your Scala code.
+
+Load the JAR in PySpark. Add the JAR to the PySpark session.
+
+Register the UDF in PySpark using SQL. Register the UDF through the PySpark SQL interface.
+
+Invoke the Scala UDF in PySpark code.
+
+
+Example 1: Simple Scala UDF for String Manipulation
+
+
+Step 1: Write the Scala UDF
+
+// Filename: StringUtils.scala
+package com.example.udfs
+
+import org.apache.spark.sql.api.java.UDF1
+
+class Uppercase extends UDF1[String, String] {
+  override def call(input: String): String = {
+    if (input != null) input.toUpperCase else null
+  }
+}
+
+Step 2: Compile into JAR
+Use SBT to package this Scala code as a JAR.
+
+sbt package
+
+
+Step 3: Add the JAR in PySpark
+Load the JAR in the PySpark session:
+
+from pyspark.sql import SparkSession
+
+spark = SparkSession.builder \
+    .appName("ScalaUDFExample") \
+    .config("spark.jars", "path/to/your-jar-file.jar") \
+    .getOrCreate()
+
+
+Step 4: Register the Scala UDF
+You’ll register the Scala UDF in PySpark using the sqlContext.registerJavaFunction method.
+
+# Register the Scala UDF
+spark.udf.registerJavaFunction("uppercase_scala", "com.example.udfs.Uppercase")
+
+
+Step 5: Use the UDF in PySpark
+Now you can call the Scala UDF in PySpark using SQL expressions:
+
+from pyspark.sql import functions as F
+
+# Sample DataFrame
+df = spark.createDataFrame([("hello",), ("world",)], ["text"])
+
+# Use Scala UDF in a DataFrame operation
+df.withColumn("uppercase_text", F.expr("uppercase_scala(text)")).show()
+Output:
+
++-----+--------------+
+| text|uppercase_text|
++-----+--------------+
+|hello|         HELLO|
+|world|         WORLD|
++-----+--------------+
+
+
+Example 2: Scala UDF for Mathematical Operations
+
+
+Step 1: Scala UDF to Calculate the Square
+
+// Filename: MathUtils.scala
+package com.example.udfs
+
+import org.apache.spark.sql.api.java.UDF1
+
+class Square extends UDF1[Double, Double] {
+  override def call(input: Double): Double = input * input
+}
+
+
+Step 2: Compile and Load in PySpark
+Compile this code and follow the same steps as above to add it as a JAR in PySpark.
+
+Register and Use the UDF in PySpark
+
+# Register the Scala UDF
+spark.udf.registerJavaFunction("square_scala", "com.example.udfs.Square")
+
+# Sample DataFrame
+df = spark.createDataFrame([(3.0,), (4.0,), (5.0,)], ["number"])
+
+# Apply the Scala UDF
+df.withColumn("square", F.expr("square_scala(number)")).show()
+Output:
+
+
++------+------+
+|number|square|
++------+------+
+|   3.0|   9.0|
+|   4.0|  16.0|
+|   5.0|  25.0|
++------+------+
+
+
+Additional Notes
+
+Dependencies: Ensure that any external dependencies your Scala UDFs rely on are included in the JAR.
+
+Performance: Keep in mind that Scala UDFs may have less overhead compared to Python UDFs, as they don’t require data serialization/deserialization between the JVM and Python.
+
+These examples demonstrate how to create and use Scala UDFs within PySpark, allowing you to leverage the performance benefits of Scala for complex transformations.
